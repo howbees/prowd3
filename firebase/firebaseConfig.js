@@ -1,16 +1,22 @@
 // firebase/firebaseConfig.js
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDTwJWsnsFeGNlhbyMAKC0-URi6mJsT9eg",
-  authDomain: "participantapp-1bd80.firebaseapp.com",
-  projectId: "participantapp-1bd80",
-  storageBucket: "participantapp-1bd80.appspot.com",
-  messagingSenderId: "587951724725",
-  appId: "1:587951724725:web:72bb722e5abf6914b3c6fc",
-  measurementId: "G-98E0RT1ELW",
+  apiKey: "AIzaSyBDQ5kkh1SuPpERsroGZREfa9AhLp3Q_YA",
+  AuthDomain: "prowd-database.firebaseapp.com",
+  projectId: "prowd-database",
+  storageBucket: "prowd-database.firebasestorage.app",
+  messagingSenderId: "524865999590",
+  appId: "1:524865999590:web:32ff23802063b9954fe127",
+  measurementId: "G-Y6S9GR5J59"
 };
 
-const app = initializeApp(firebaseConfig);
+// Prevent duplicate initialization
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-export default app;
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+export { app, db, auth };
