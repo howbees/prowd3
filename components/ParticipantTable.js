@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { doc, deleteDoc } from 'firebase/firestore';
-import { db } from '../firebase/firebaseConfig'; // Adjust the path if needed
+import { db } from '../firebase/firebaseConfig';
 
 export default function ParticipantTable({ participants, userRole, userEmail }) {
   const router = useRouter();
@@ -50,13 +50,47 @@ export default function ParticipantTable({ participants, userRole, userEmail }) 
     try {
       setDeletingId(participantId);
       await deleteDoc(doc(db, 'participants', participantId));
-      router.reload(); // Auto-refresh the page
+      router.reload();
     } catch (error) {
       console.error('Error deleting participant:', error);
       alert('❌ Error deleting participant. Check console for details.');
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleExportCSV = () => {
+    if (filtered.length === 0) return;
+
+    const headers = ['First Name', 'Last Name', 'Age', 'Cohort', 'GPMS Status', 'Phases', ...(userRole === 'admin' ? ['Advocate'] : [])];
+    const rows = filtered.map(p => {
+      const phases = [
+        p.phase1ReleaseDate ? '1' : '',
+        p.phase2ReleaseDate ? '2' : '',
+        p.phase3ReleaseDate ? '3' : ''
+      ].filter(Boolean).join(' ');
+      const row = [
+        p.firstName || '',
+        p.lastName || '',
+        p.age ?? '',
+        p.cohort || '',
+        p.gpmsStatus || '',
+        phases
+      ];
+      if (userRole === 'admin') row.push(p.advocateName || '');
+      return row;
+    });
+
+    const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'participants_export.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -128,6 +162,13 @@ export default function ParticipantTable({ participants, userRole, userEmail }) 
             ))}
           </select>
         </div>
+
+        {/* Export Button */}
+        <div className="col-md-3 mt-2 mt-md-0">
+          <button onClick={handleExportCSV} className="btn btn-outline-primary w-100">
+            Export CSV
+          </button>
+        </div>
       </div>
 
       {/* Table */}
@@ -148,10 +189,7 @@ export default function ParticipantTable({ participants, userRole, userEmail }) 
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td
-                  colSpan={userRole === 'admin' ? 8 : 7}
-                  className="text-center text-muted"
-                >
+                <td colSpan={userRole === 'admin' ? 8 : 7} className="text-center text-muted">
                   No participants found
                 </td>
               </tr>
@@ -169,10 +207,7 @@ export default function ParticipantTable({ participants, userRole, userEmail }) 
                   {p.phase3ReleaseDate && '3 '}
                 </td>
                 <td>
-                  <a
-                    href={`/participant/${p.id}`}
-                    className="btn btn-link p-0"
-                  >
+                  <a href={`/participant/${p.id}`} className="btn btn-link p-0">
                     View
                   </a>
                 </td>
