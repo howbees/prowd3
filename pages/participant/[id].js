@@ -4,6 +4,7 @@ import { db } from '../../firebase/firebaseConfig';
 import { useEffect, useState } from 'react';
 import AuthGuard from '../../components/AuthGuard';
 import LogoutButton from '../../components/LogoutButton';
+import Link from 'next/link';
 
 export default function ParticipantPage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function ParticipantPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState(null);
+  const [isEditable, setIsEditable] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -47,6 +49,7 @@ export default function ParticipantPage() {
       const { id: _, ...data } = participant;
       await updateDoc(docRef, data);
       setSaveMessage('✅ Changes saved successfully!');
+      setIsEditable(false); // Exit edit mode
     } catch (err) {
       console.error('Error saving participant:', err);
       setSaveMessage('❌ Failed to save changes. Please try again.');
@@ -56,98 +59,97 @@ export default function ParticipantPage() {
     }
   };
 
-  if (loading) return <div className="text-center">Loading...</div>;
-  if (!participant) return <div className="text-center">Participant not found.</div>;
+  if (loading) return <div className="text-center py-5">Loading...</div>;
+  if (!participant) return <div className="text-center py-5">Participant not found.</div>;
 
   const fieldOrder = [
-    "firstName",
-    "lastName",
-    "age",
-    "sex",
-    "race",
-    "cohort",
-    "gpmsId",
-    "gpmsStatus",
-    "bopRegister",
-    "referralSummary",
-    "advocateName",
-    "transferredFrom",
-    "transferredTo",
-    "lastDateOfContact",
-    "phase1Instructor",
-    "phase1ReleaseDate",
-    "phase2ReleaseDate",
-    "phase3ReleaseDate",
-    "mathPreNumerator",
-    "mathPreDenominator",
-    "mathPostNumerator",
-    "mathPostDenominator",
-    "readingPreNumerator",
-    "readingPreDenominator",
-    "readingPostNumerator",
-    "readingPostDenominator"
+    "firstName", "lastName", "age", "sex", "race", "cohort", "gpmsId", "gpmsStatus",
+    "bopRegister", "referralSummary", "advocateName", "transferredFrom", "transferredTo",
+    "lastDateOfContact", "phase1Instructor", "phase1ReleaseDate", "phase2ReleaseDate",
+    "phase3ReleaseDate", "mathPreNumerator", "mathPreDenominator", "mathPostNumerator",
+    "mathPostDenominator", "readingPreNumerator", "readingPreDenominator",
+    "readingPostNumerator", "readingPostDenominator"
   ];
 
   const formatLabel = (key) => {
     return key
-      .replace(/([A-Z])/g, ' $1') // add space before capital letters
-      .replace(/^./, str => str.toUpperCase()); // capitalize first letter
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/^./, str => str.toUpperCase());
   };
 
   return (
     <AuthGuard>
-      <div className="container py-5">
-        <div className="row">
-          {/* Left Empty Column */}
-          <div className="col-md-3 d-none d-md-block">
-            {/* Can be used for something like additional info, if needed */}
-          </div>
+      <style jsx>{`
+        button {
+          border: none;
+        }
+      `}</style>
 
-          {/* Center Column for the Form */}
-          <div className="col-12 col-md-6">
-            <LogoutButton />
-            <h2 className="mb-4 text-center">Edit Participant: {participant.firstName} {participant.lastName}</h2>
+      <div className="container py-3">
+        <div className="row justify-content-center">
+          <div className="col-md-4">
 
-            <form>
-              {fieldOrder.map((field) => {
-                const value = participant[field] ?? '';
-                return (
-                  <div key={field} className="mb-3">
-                    <label className="form-label">{formatLabel(field)}:</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={value}
-                      onChange={e => handleChange(field, e.target.value)}
-                    />
-                  </div>
-                );
-              })}
+            {/* Header */}
+            <div className="bg-primary text-white d-flex justify-content-between align-items-center px-3 py-2 rounded">
+              <Link href="/dashboard" className="text-white text-decoration-none fw-semibold">Dashboard</Link>
+              <LogoutButton className="btn btn-sm btn-outline-light" />
+            </div>
+
+            {/* Edit Button */}
+            <div className="d-flex justify-content-between align-items-center mt-4">
+              <h5 className="mb-0">
+                {isEditable ? "Edit" : "View"} Participant: {participant.firstName} {participant.lastName}
+              </h5>
+              <button
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() => setIsEditable(!isEditable)}
+              >
+                {isEditable ? 'Cancel' : 'Edit'}
+              </button>
+            </div>
+
+            {/* Form Fields */}
+            <form className="mt-3">
+              <div className="row">
+                {fieldOrder.map((field) => {
+                  const value = participant[field] ?? '';
+                  return (
+                    <div className="col-6 mb-2" key={field}>
+                      <label className="form-label fw-bold small">{formatLabel(field)}</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        value={value}
+                        readOnly={!isEditable}
+                        onChange={e => handleChange(field, e.target.value)}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </form>
 
-            <div className="d-flex justify-content-between align-items-center">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="btn btn-primary"
-              >
-                {saving ? 'Saving...' : 'Save Changes'}
-              </button>
-
-              {saveMessage && (
-                <div
-                  className={`alert ${saveMessage.startsWith('✅') ? 'alert-success' : 'alert-danger'} mt-3`}
-                  role="alert"
+            {/* Save Button + Message */}
+            {isEditable && (
+              <div className="d-grid gap-2 mt-3 position-relative">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="btn btn-success"
                 >
-                  {saveMessage}
-                </div>
-              )}
-            </div>
-          </div>
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            )}
 
-          {/* Right Empty Column */}
-          <div className="col-md-3 d-none d-md-block">
-            {/* This can be used for any additional content, like navigation or info */}
+            {saveMessage && (
+              <div
+                className={`alert ${saveMessage.startsWith('✅') ? 'alert-success' : 'alert-danger'} mt-3`}
+                role="alert"
+              >
+                {saveMessage}
+              </div>
+            )}
           </div>
         </div>
       </div>
