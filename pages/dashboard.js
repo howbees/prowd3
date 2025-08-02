@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-
+import { useRouter } from 'next/router';
 import ParticipantTable from '../components/ParticipantTable';
 import { db, auth } from '../firebase/firebaseConfig';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState(null);
   const [userRole, setUserRole] = useState(null);
+  const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -19,7 +20,6 @@ export default function Dashboard() {
         setUserEmail(user.email);
 
         try {
-          // 1. Get role from Firestore
           const userDocRef = doc(db, 'users', user.email);
           const userDoc = await getDoc(userDocRef);
 
@@ -27,14 +27,12 @@ export default function Dashboard() {
             const { role } = userDoc.data();
             setUserRole(role);
 
-            // 2. Fetch participants
             const querySnapshot = await getDocs(collection(db, 'participants'));
             const data = querySnapshot.docs.map(doc => ({
               id: doc.id,
               ...doc.data()
             }));
 
-            // 3. Filter if user is advocate
             const filtered = role === 'advocate'
               ? data.filter(p => p.advocateName?.trim().toLowerCase() === user.email.toLowerCase())
               : data;
@@ -58,17 +56,43 @@ export default function Dashboard() {
 
   return (
     <AuthGuard>
-      <div style={{ padding: '20px' }}>
-        <LogoutButton />
-        <h1>Dashboard – {userRole?.toUpperCase()}</h1>
-        {loading
-          ? <p>Loading...</p>
-          : <ParticipantTable
-              participants={participants}
-              userRole={userRole}
-              userEmail={userEmail}
-            />}
-            
+      <div className="container-fluid py-4">
+        <div className="row justify-content-center">
+          {/* Left Spacer */}
+          <div className="col-md-2 d-none d-md-block" />
+
+          {/* Main Content */}
+          <div className="col-12 col-md-8">
+            {/* Navigation Header */}
+            <div className="bg-primary text-white rounded p-3 mb-4 d-flex justify-content-between align-items-center">
+              <div><strong>Dashboard</strong></div>
+              <div className="text-center">Welcome: {userEmail}</div>
+              <div className="d-flex gap-2">
+                <button
+                  className="btn btn-light btn-sm"
+                  onClick={() => router.push('/add-participant')}
+                >
+                  + Add New
+                </button>
+                <LogoutButton className="btn btn-sm btn-outline-light" />
+              </div>
+            </div>
+
+            {/* Participant Table */}
+            {loading ? (
+              <p>Loading...</p>
+            ) : (
+              <ParticipantTable
+                participants={participants}
+                userRole={userRole}
+                userEmail={userEmail}
+              />
+            )}
+          </div>
+
+          {/* Right Spacer */}
+          <div className="col-md-2 d-none d-md-block" />
+        </div>
       </div>
     </AuthGuard>
   );
