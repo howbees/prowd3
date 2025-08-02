@@ -1,6 +1,11 @@
 import React, { useState, useMemo } from 'react';
+import { useRouter } from 'next/router';
+import { doc, deleteDoc } from 'firebase/firestore';
+import { db } from '../firebase/firebaseConfig'; // Adjust the path if needed
 
 export default function ParticipantTable({ participants, userRole, userEmail }) {
+  const router = useRouter();
+
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({
     cohort: '',
@@ -8,6 +13,8 @@ export default function ParticipantTable({ participants, userRole, userEmail }) 
     advocate: '',
     gpmsStatus: '',
   });
+
+  const [deletingId, setDeletingId] = useState(null);
 
   const phases = ['Phase 1', 'Phase 2', 'Phase 3'];
 
@@ -34,6 +41,22 @@ export default function ParticipantTable({ participants, userRole, userEmail }) 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleDelete = async (participantId) => {
+    const confirmed = confirm('Are you sure you want to delete this participant? This cannot be undone.');
+    if (!confirmed) return;
+
+    try {
+      setDeletingId(participantId);
+      await deleteDoc(doc(db, 'participants', participantId));
+      router.reload(); // Auto-refresh the page
+    } catch (error) {
+      console.error('Error deleting participant:', error);
+      alert('❌ Error deleting participant. Check console for details.');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -92,7 +115,7 @@ export default function ParticipantTable({ participants, userRole, userEmail }) 
           </div>
         )}
 
-        <div className="col-md-3">
+        <div className="col-md-3 mt-2 mt-md-0">
           <select
             name="gpmsStatus"
             value={filters.gpmsStatus}
@@ -119,13 +142,14 @@ export default function ParticipantTable({ participants, userRole, userEmail }) 
               <th>GPMS Status</th>
               <th>Phases</th>
               <th>View</th>
+              <th>Delete</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={userRole === 'admin' ? 7 : 6}
+                  colSpan={userRole === 'admin' ? 8 : 7}
                   className="text-center text-muted"
                 >
                   No participants found
@@ -151,6 +175,15 @@ export default function ParticipantTable({ participants, userRole, userEmail }) 
                   >
                     View
                   </a>
+                </td>
+                <td>
+                  <button
+                    className="btn btn-sm btn-danger"
+                    onClick={() => handleDelete(p.id)}
+                    disabled={deletingId === p.id}
+                  >
+                    {deletingId === p.id ? 'Deleting...' : 'Delete'}
+                  </button>
                 </td>
               </tr>
             ))}

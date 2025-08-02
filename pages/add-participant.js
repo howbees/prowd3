@@ -1,7 +1,6 @@
-// pages/add-participant.js
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import AuthGuard from '../components/AuthGuard';
 import LogoutButton from '../components/LogoutButton';
@@ -23,6 +22,13 @@ export default function AddParticipant() {
     "readingPostNumerator", "readingPostDenominator"
   ];
 
+  const dateFields = [
+    'phase1ReleaseDate',
+    'phase2ReleaseDate',
+    'phase3ReleaseDate',
+    'lastDateOfContact',
+  ];
+
   const formatLabel = (key) =>
     key.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
 
@@ -37,7 +43,7 @@ export default function AddParticipant() {
 
     const firstName = participant.firstName?.trim().toLowerCase() || '';
     const lastName = participant.lastName?.trim().toLowerCase() || '';
-    const docId = `${firstName}_${lastName}`;
+    const docId = `${firstName}_${lastName}`.replace(/\s+/g, '_');
 
     try {
       const docRef = doc(db, 'participants', docId);
@@ -46,7 +52,10 @@ export default function AddParticipant() {
       if (docSnap.exists()) {
         setError('Participant with this name already exists.');
       } else {
-        await setDoc(docRef, participant);
+        await setDoc(docRef, {
+          ...participant,
+          createdAt: Timestamp.now(),
+        });
         router.push('/dashboard');
       }
     } catch (err) {
@@ -77,9 +86,11 @@ export default function AddParticipant() {
               <div className="row">
                 {fieldOrder.map((field) => (
                   <div key={field} className="col-6 mb-2">
-                    <label className="form-label fw-bold small">{formatLabel(field)}</label>
+                    <label className="form-label fw-bold small">
+                      {field === 'advocateName' ? 'Advocate Email' : formatLabel(field)}
+                    </label>
                     <input
-                      type="text"
+                      type={dateFields.includes(field) ? 'date' : 'text'}
                       className="form-control form-control-sm"
                       value={participant[field] ?? ''}
                       onChange={(e) => handleChange(field, e.target.value)}

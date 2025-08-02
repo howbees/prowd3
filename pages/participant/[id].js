@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { doc, getDoc, updateDoc, collection, addDoc, query, orderBy, getDocs } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, addDoc, query, orderBy, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
 import { useEffect, useState } from 'react';
 import AuthGuard from '../../components/AuthGuard';
@@ -62,6 +62,14 @@ export default function ParticipantPage() {
     try {
       const docRef = doc(db, 'participants', participant.id);
       const { id: _, ...data } = participant;
+
+      // Convert date fields to Timestamp
+      for (const field of dateFields) {
+        if (data[field] instanceof Date) {
+          data[field] = Timestamp.fromDate(data[field]);
+        }
+      }
+
       await updateDoc(docRef, data);
       setSaveMessage('✅ Changes saved successfully!');
       setIsEditable(false);
@@ -132,13 +140,6 @@ export default function ParticipantPage() {
     "lastDateOfContact", "phase1ReleaseDate", "phase2ReleaseDate", "phase3ReleaseDate"
   ]);
 
-  const dropdowns = {
-    sex: ["Male", "Female", "Other"],
-    phase1Instructor: ["Instructor A", "Instructor B"],
-    cohort: ["Spring", "Summer", "Fall", "Winter"],
-    gpmsStatus: ["Active", "Inactive", "Pending"]
-  };
-
   if (loading) return <div className="text-center py-5">Loading...</div>;
   if (!participant) return <div className="text-center py-5">Participant not found.</div>;
 
@@ -179,22 +180,15 @@ export default function ParticipantPage() {
                       <div className="col-6 mb-2" key={field}>
                         <label className="form-label fw-bold small">{formatLabel(field)}</label>
                         {isEditable ? (
-                          dropdowns[field] ? (
-                            <select
-                              className="form-select form-select-sm"
-                              value={value}
-                              onChange={e => handleChange(field, e.target.value)}
-                            >
-                              <option value="">Select</option>
-                              {dropdowns[field].map(opt => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                          ) : dateFields.has(field) ? (
+                          dateFields.has(field) ? (
                             <input
                               type="date"
                               className="form-control form-control-sm"
-                              value={value ? new Date(value.seconds * 1000).toISOString().split('T')[0] : ''}
+                              value={value && value.seconds
+                                ? new Date(value.seconds * 1000).toISOString().split('T')[0]
+                                : value instanceof Date
+                                ? value.toISOString().split('T')[0]
+                                : ''}
                               onChange={e => handleChange(field, new Date(e.target.value))}
                             />
                           ) : (
